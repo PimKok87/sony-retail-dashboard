@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sony Retail Intelligence — Store Visit Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #111; font-size: 14px; line-height: 1.5; }
+
+  .header { background: #000; color: #fff; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .sony-logo { font-size: 22px; font-weight: 700; letter-spacing: 3px; color: #fff; }
+  .header-divider { width: 1px; height: 22px; background: #444; }
+  .header-title { font-size: 13px; color: #aaa; letter-spacing: 0.5px; }
+  .header-meta { font-size: 12px; color: #666; }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
+
+  .filter-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+  .filter-bar label { font-size: 12px; color: #666; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-right: -6px; }
+  select { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 7px 12px; font-size: 13px; color: #111; cursor: pointer; outline: none; }
+  select:focus { border-color: #000; }
+  .btn-export { margin-left: auto; background: #000; color: #fff; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-export:hover { background: #222; }
+
+  .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .kpi-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px 18px; }
+  .kpi-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+  .kpi-value { font-size: 26px; font-weight: 600; color: #111; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: #aaa; margin-top: 4px; }
+  .kpi-accent { border-left: 3px solid #000; }
+  .kpi-accent-green { border-left: 3px solid #22c55e; }
+  .kpi-accent-amber { border-left: 3px solid #f59e0b; }
+  .kpi-accent-red { border-left: 3px solid #ef4444; }
+
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: #e5e5e5; }
+
+  .visits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .visit-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; transition: box-shadow 0.15s; }
+  .visit-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .visit-card-header { padding: 14px 16px 12px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .visit-store-name { font-size: 15px; font-weight: 600; color: #111; }
+  .visit-meta { font-size: 11px; color: #999; margin-top: 2px; }
+  .visit-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-chain { background: #e8f0fe; color: #1a56db; }
+  .badge-good { background: #dcfce7; color: #16a34a; }
+  .badge-mid { background: #fef9c3; color: #a16207; }
+  .badge-low { background: #fee2e2; color: #dc2626; }
+  .schap-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+  .schap-dot::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .schap-genba::before { background: #22c55e; } .schap-genba { color: #15803d; }
+  .schap-voorraad::before { background: #f59e0b; } .schap-voorraad { color: #92400e; }
+  .schap-nonconform::before { background: #ef4444; } .schap-nonconform { color: #991b1b; }
+  .visit-body { padding: 14px 16px; }
+  .visit-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f5f5f5; gap: 8px; }
+  .visit-row:last-child { border-bottom: none; }
+  .visit-row-label { font-size: 12px; color: #777; flex-shrink: 0; }
+  .visit-row-value { font-size: 12px; color: #111; text-align: right; }
+  .score-bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .score-bar { height: 5px; border-radius: 3px; background: #f0f0f0; width: 60px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; }
+  .fill-green { background: #22c55e; } .fill-amber { background: #f59e0b; } .fill-red { background: #ef4444; }
+  .feedback-box { background: #f9f9f9; border-radius: 6px; padding: 8px 10px; font-size: 11px; color: #555; line-height: 1.5; margin-top: 8px; font-style: italic; border-left: 2px solid #e0e0e0; }
+  .photo-strip { display: flex; gap: 6px; margin-top: 10px; }
+  .photo-thumb { width: 68px; height: 52px; border-radius: 6px; background: #f0f0f0; border: 1px solid #e5e5e5; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 2px; cursor: pointer; }
+  .photo-thumb-label { font-size: 9px; color: #999; text-align: center; padding: 0 4px; }
+
+  .intel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .intel-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 14px 16px; }
+  .intel-card-title { font-size: 12px; font-weight: 600; color: #111; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .intel-icon { width: 20px; height: 20px; background: #f0f0f0; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+  .intel-items { list-style: none; }
+  .intel-items li { font-size: 12px; color: #555; padding: 4px 0; border-bottom: 1px solid #f5f5f5; display: flex; gap: 6px; align-items: flex-start; }
+  .intel-items li:last-child { border-bottom: none; }
+  .intel-dot { width: 5px; height: 5px; border-radius: 50%; background: #bbb; margin-top: 5px; flex-shrink: 0; }
+
+  .summary-table-wrap { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; margin-bottom: 32px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 600px; }
+  thead tr { background: #fafafa; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e5e5; white-space: nowrap; }
+  td { padding: 10px 14px; font-size: 12px; color: #333; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  .rsa-pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .rsa-jurre { background: #ede9fe; color: #5b21b6; }
+  .rsa-marthe { background: #fce7f3; color: #9d174d; }
+
+  .footer { border-top: 1px solid #e5e5e5; padding: 20px 0 0; display: flex; justify-content: space-between; font-size: 11px; color: #bbb; flex-wrap: wrap; gap: 8px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; align-items: center; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: #fff; border-radius: 14px; max-width: 500px; width: 90vw; max-height: 85vh; overflow-y: auto; padding: 24px; position: relative; }
+  .modal-close { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
+  .modal-close:hover { color: #111; }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+  @media (max-width: 600px) {
+    .header { padding: 0 16px; }
+    .main { padding: 20px 14px; }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .btn-export { display: none; }
+  }
+  @media print {
+    .header { position: static; }
+    .filter-bar { display: none; }
+    body { background: #fff; }
+    .btn-export { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="sony-logo">SONY</div>
+    <div class="header-divider"></div>
+    <div class="header-title">Retail Intelligence — Store Visit Dashboard</div>
+  </div>
+  <div class="header-meta" style="font-size:12px;color:#666">
+    Bijgewerkt: <span id="updateDate" style="color:#fff;margin-left:6px"></span>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="filter-bar">
+    <label>RSA</label>
+    <select id="filterRSA" onchange="renderAll()">
+      <option value="all">Alle RSA's</option>
+      <option value="Jurre">Jurre</option>
+      <option value="Marthe">Marthe</option>
+    </select>
+    <label>Keten</label>
+    <select id="filterChain" onchange="renderAll()">
+      <option value="all">Alle ketens</option>
+      <option value="Coolblue">Coolblue</option>
+      <option value="CameraNU">CameraNU</option>
+      <option value="Kamera Express">Kamera Express</option>
+      <option value="MediaMarkt">MediaMarkt</option>
+    </select>
+    <label>Week</label>
+    <select id="filterWeek" onchange="renderAll()">
+      <option value="all">Alle weken</option>
+    </select>
+    <button class="btn-export" onclick="window.print()">⬇ Export PDF</button>
+    <button class="btn-export" style="background:#1a56db" onclick="loadFromSheets()">↺ Vernieuwen</button>
+  </div>
+
+  <div class="kpi-strip" id="kpiStrip"></div>
+
+  <div class="section-title">Winkelbezoeken</div>
+  <div class="visits-grid" id="visitsGrid"></div>
+
+  <div class="section-title">Overzichtstabel</div>
+  <div class="summary-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Winkel</th><th>RSA</th><th>Keten</th><th>Kennisniveau</th>
+          <th>Sony schap</th><th>POS / promo</th><th>Inhouse share</th><th>Datum</th>
+        </tr>
+      </thead>
+      <tbody id="summaryBody"></tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Concurrentie & overige inzichten</div>
+  <div class="intel-grid" id="intelGrid"></div>
+
+  <div class="footer">
+    <div>Sony Netherlands · Trade Marketing · Data afkomstig van RSA store visit formulieren (Google Forms). Elke maandag bijgewerkt.</div>
+    <div>Sony Retail Intelligence</div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIGURATIE ────────────────────────────────────────────
+// Stap 1: Vervang dit met jouw Sheet ID (het deel tussen /d/ en /edit in de URL)
+const SHEET_ID = '1o45Ob3lGT9SVouCrT2taXawM_eVmhJ2etc8Cug_UVvU';
+
+// Stap 2: Sheet tab naam (onderaan in Google Sheets zichtbaar)
+const SHEET_TAB = 'Form Responses 1';
+
+// Stap 3: Koppel e-mailadres aan RSA-naam
+const RSA_EMAIL_MAP = {
+  'jurrejeltesony@gmail.com': 'Jurre',
+  'marthe.vanneste8@gmail.com': 'Marthe',
+};
+
+// Stap 4: Keten detectie op basis van winkelnaam
+function detectKeten(naam) {
+  if (!naam) return 'Onbekend';
+  const n = naam.toLowerCase();
+  if (n.includes('coolblue'))       return 'Coolblue';
+  if (n.includes('cameranu') || n.includes('camera nu')) return 'CameraNU';
+  if (n.includes('kamera express') || n.includes('kameraexpress')) return 'Kamera Express';
+  if (n.includes('mediamarkt') || n.includes('media markt')) return 'MediaMarkt';
+  return naam; // fallback: winkelnaam zelf als keten
+}
+
+// Stap 5: Schap-status mapping — past aan op wat Jurre/Marthe invullen in het form
+function parseSchapStatus(raw) {
+  if (!raw) return 'genba';
+  const r = raw.toLowerCase();
+  if (r.includes('niet conform') || r.includes('nonconform') || r.includes('niet goed') || r.includes('slecht')) return 'nonconform';
+  if (r.includes('voorraad') || r.includes('aanvullen') || r.includes('leeg') || r.includes('ontbreekt')) return 'voorraad';
+  return 'genba'; // conform / goed / prima / etc.
+}
+
+// Stap 6: Kennisniveau — form geeft bijv. "3 - Gemiddeld" of gewoon een cijfer
+function parseKennisniveau(raw) {
+  if (!raw) return 3;
+  const match = String(raw).match(/\d/);
+  return match ? Math.min(5, Math.max(1, parseInt(match[0]))) : 3;
+}
+
+// Stap 7: Weeknummer berekenen uit datum
+function getWeekNumber(d) {
+  const date = new Date(d);
+  date.setHours(0,0,0,0);
+  date.setDate(date.getDate() + 3 - (date.getDay()+6)%7);
+  const week1 = new Date(date.getFullYear(),0,4);
+  return 'W' + (1 + Math.round(((date.getTime()-week1.getTime())/86400000 - 3 + (week1.getDay()+6)%7)/7));
+}
+
+// ─── SHEETS LOADER ───────────────────────────────────────────
+let VISITS = [];
+
+async function loadFromSheets() {
+  showLoadingState();
+
+  // Gepubliceerde CSV URL — afgeleid van jouw gepubliceerde Sheet link
+  const csvUrl = `https://docs.google.com/spreadsheets/d/e/2PACX-1vShHswcOqjD8HwQA6WFrE_KOQnjabsEF9hLlxytVGyhIOico8Gk0eGTfQ5vYvc9uQhL61wD8DfWGiSq/pub?gid=2122801300&single=true&output=csv`;
+
+  try {
+    const res = await fetch(csvUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    VISITS = parseCSV(text);
+    buildWeekFilter();
+    renderAll();
+  } catch(err) {
+    showError(err);
+  }
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+
+  // Parse een CSV-regel rekening houdend met quoted velden
+  function splitLine(line) {
+    const result = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    result.push(cur.trim());
+    return result;
+  }
+
+  const headers = splitLine(lines[0]).map(h => h.replace(/^"|"$/g,'').toLowerCase());
+
+  function hi(name) { return headers.findIndex(h => h.includes(name.toLowerCase())); }
+
+  const iTimestamp  = hi('timestamp');
+  const iEmail      = hi('email');
+  const iWinkel     = hi('naam winkel');
+  const iKennis     = hi('kennis van de medewerkers');
+  const iFeedback   = hi('feedback op basis van kennisniveau');
+  const iSchapHQ    = hi('conform hq');
+  const iSchapUit   = hi('sony schap er uit');
+  const iPos        = hi('pos/promoties heeft de concurrentie');
+  const iOverig     = hi('overige informatie');
+  const iReclame    = hi('reclame');
+  const iTraining   = hi('training');
+  const iPromo      = hi('promoties uitgelegd');
+  const iWintercash = hi('wintercashback uit de winkel');
+  const iSales      = hi('sales input');
+
+  return lines.slice(1).map((line, idx) => {
+    const c = splitLine(line).map(v => v.replace(/^"|"$/g,'').trim());
+    const get = (i) => (i >= 0 && c[i]) ? c[i] : '';
+
+    const timestamp = get(iTimestamp);
+    const email     = get(iEmail).toLowerCase();
+    const winkel    = get(iWinkel);
+    if (!winkel) return null;
+
+    const datum = timestamp ? new Date(timestamp) : new Date();
+
+    const rsaName = RSA_EMAIL_MAP[email] ||
+      (email.split('@')[0] ? email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1) : 'Onbekend');
+
+    const schapRaw = get(iSchapHQ) || get(iSchapUit);
+    const posRaw   = get(iPos);
+    const ovRaw    = get(iOverig);
+
+    const ihsMatch = ovRaw.match(/ihs[:\s]*(\d+)/i) || ovRaw.match(/(\d+)\s*%/);
+    const inhouseShare = ihsMatch ? parseInt(ihsMatch[1]) : 0;
+
+    const extraParts = [
+      get(iReclame)    ? `Reclame: ${get(iReclame)}` : '',
+      get(iSales)      ? `Sales input: ${get(iSales)}` : '',
+      get(iPromo)      ? `Promoties: ${get(iPromo)}` : '',
+      get(iWintercash) ? `Wintercashback: ${get(iWintercash)}` : '',
+      get(iTraining)   ? `Training: ${get(iTraining)}` : '',
+    ].filter(Boolean).join(' · ');
+
+    return {
+      id: idx + 1,
+      week: getWeekNumber(datum),
+      datum: datum.toISOString().split('T')[0],
+      rsa: rsaName,
+      keten: detectKeten(winkel),
+      winkel,
+      kennisNiveau: parseKennisniveau(get(iKennis)),
+      feedbackKennis: get(iFeedback),
+      schapStatus: parseSchapStatus(schapRaw),
+      inhouseShare,
+      posAanwezig: posRaw.length > 3,
+      concurrentieInzichten: posRaw,
+      overigeInfo: [ovRaw, extraParts].filter(Boolean).join(' · '),
+    };
+  }).filter(Boolean);
+}
+
+function showLoadingState() {
+  document.getElementById('kpiStrip').innerHTML = `
+    <div style="grid-column:1/-1;text-align:center;padding:32px;color:#999;font-size:13px">
+      Data ophalen uit Google Sheets…
+    </div>`;
+  document.getElementById('visitsGrid').innerHTML = '';
+  document.getElementById('summaryBody').innerHTML = '';
+  document.getElementById('intelGrid').innerHTML = '';
+}
+
+function showError(err) {
+  document.getElementById('kpiStrip').innerHTML = `
+    <div style="grid-column:1/-1;background:#fff5f5;border:1px solid #fecaca;border-radius:10px;padding:20px;font-size:13px;color:#991b1b">
+      <strong>Kan Sheet niet laden.</strong><br><br>
+      De meest waarschijnlijke oorzaak: de Sheet is nog niet gepubliceerd.<br><br>
+      Doe dit in Google Sheets:<br>
+      <strong>Bestand → Delen → Publiceren op internet</strong><br>
+      → Kies tabblad <em>Form Responses 1</em><br>
+      → Klik <em>Publiceren</em><br><br>
+      Klik daarna op <strong>↺ Vernieuwen</strong> in het dashboard.<br><br>
+      <span style="color:#888;font-size:11px">Technische fout: ${err.message}</span>
+    </div>`;
+}
+
+// Bouw weekfilter dynamisch op basis van data
+function buildWeekFilter() {
+  const weeks = [...new Set(VISITS.map(v => v.week))].sort().reverse();
+  const sel = document.getElementById('filterWeek');
+  sel.innerHTML = '<option value="all">Alle weken</option>' +
+    weeks.map(w => `<option value="${w}">${w}</option>`).join('');
+  if (weeks.length) sel.value = weeks[0]; // selecteer meest recente week
+}
+
+
+// ─── HELPERS ─────────────────────────────────────────────────
+function kennisLabel(n) {
+  if (n >= 4) return { text:"Goed", cls:"badge-good" };
+  if (n === 3) return { text:"Gemiddeld", cls:"badge-mid" };
+  return { text:"Laag", cls:"badge-low" };
+}
+function scoreColor(n) { return n>=4?"fill-green":n===3?"fill-amber":"fill-red"; }
+function schapLabel(s) {
+  if (s==="genba")    return { cls:"schap-genba",    text:"Conform Genba",  color:"#22c55e" };
+  if (s==="voorraad") return { cls:"schap-voorraad", text:"Voorraad nodig", color:"#f59e0b" };
+  return                     { cls:"schap-nonconform",text:"Niet conform",  color:"#ef4444" };
+}
+function formatDate(d) {
+  return new Date(d).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});
+}
+function getFiltered() {
+  const rsa=document.getElementById('filterRSA').value;
+  const chain=document.getElementById('filterChain').value;
+  const week=document.getElementById('filterWeek').value;
+  return VISITS.filter(v=>
+    (rsa==='all'||v.rsa===rsa)&&
+    (chain==='all'||v.keten===chain)&&
+    (week==='all'||v.week===week)
+  );
+}
+
+// ─── KPI ─────────────────────────────────────────────────────
+function renderKPIs(data) {
+  const total=data.length;
+  const avgK=total?(data.reduce((s,v)=>s+v.kennisNiveau,0)/total).toFixed(1):'-';
+  const avgS=total?Math.round(data.reduce((s,v)=>s+v.inhouseShare,0)/total):'-';
+  const lowK=data.filter(v=>v.kennisNiveau<=2).length;
+  const schapR=data.filter(v=>v.schapStatus==='nonconform').length;
+  const schapO=data.filter(v=>v.schapStatus==='voorraad').length;
+  document.getElementById('kpiStrip').innerHTML=`
+    <div class="kpi-card kpi-accent">
+      <div class="kpi-label">Bezoeken</div><div class="kpi-value">${total}</div><div class="kpi-sub">winkels bezocht</div>
+    </div>
+    <div class="kpi-card ${parseFloat(avgK)>=3.5?'kpi-accent-green':parseFloat(avgK)>=2.5?'kpi-accent-amber':'kpi-accent-red'}">
+      <div class="kpi-label">Gem. kennisniveau</div><div class="kpi-value">${avgK}<span style="font-size:14px;color:#999">/5</span></div><div class="kpi-sub">over alle winkels</div>
+    </div>
+    <div class="kpi-card kpi-accent-amber">
+      <div class="kpi-label">Gem. inhouse share</div><div class="kpi-value">${avgS}<span style="font-size:14px;color:#999">%</span></div><div class="kpi-sub">sell-floor aandeel</div>
+    </div>
+    <div class="kpi-card ${schapR>0?'kpi-accent-red':schapO>0?'kpi-accent-amber':'kpi-accent-green'}">
+      <div class="kpi-label">Schap issues</div><div class="kpi-value">${schapR+schapO}</div><div class="kpi-sub">${schapR} niet conform · ${schapO} voorraad</div>
+    </div>
+    <div class="kpi-card kpi-accent-red">
+      <div class="kpi-label">Urgente training</div><div class="kpi-value">${lowK}</div><div class="kpi-sub">winkel${lowK!==1?'s':''} niveau ≤ 2</div>
+    </div>`;
+}
+
+// ─── VISIT CARDS ─────────────────────────────────────────────
+function renderVisitCards(data) {
+  if (!data.length) {
+    document.getElementById('visitsGrid').innerHTML='<p style="color:#999;font-size:13px;grid-column:1/-1">Geen bezoeken gevonden.</p>';
+    return;
+  }
+  document.getElementById('visitsGrid').innerHTML=data.map(v=>{
+    const k=kennisLabel(v.kennisNiveau);
+    const s=schapLabel(v.schapStatus);
+    const fw=Math.round((v.kennisNiveau/5)*100);
+    return `<div class="visit-card">
+      <div class="visit-card-header">
+        <div>
+          <div class="visit-store-name">${v.winkel}</div>
+          <div class="visit-meta">${formatDate(v.datum)} · ${v.week}</div>
+        </div>
+        <div class="visit-badges">
+          <span class="badge" style="background:${v.rsa==='Jurre'?'#ede9fe':'#fce7f3'};color:${v.rsa==='Jurre'?'#5b21b6':'#9d174d'}">${v.rsa}</span>
+          <span class="badge badge-chain">${v.keten}</span>
+        </div>
+      </div>
+      <div class="visit-body">
+        <div class="visit-row">
+          <span class="visit-row-label">Kennisniveau</span>
+          <div class="score-bar-wrap">
+            <div class="score-bar"><div class="score-fill ${scoreColor(v.kennisNiveau)}" style="width:${fw}%"></div></div>
+            <span class="badge ${k.cls}" style="padding:2px 7px;font-size:10px">${v.kennisNiveau}/5 · ${k.text}</span>
+          </div>
+        </div>
+        <div class="visit-row">
+          <span class="visit-row-label">Sony schap</span>
+          <span class="schap-dot ${s.cls}">${s.text}</span>
+        </div>
+        <div class="visit-row">
+          <span class="visit-row-label">Inhouse share</span>
+          <strong style="color:${v.inhouseShare>=40?'#16a34a':v.inhouseShare>=30?'#a16207':'#dc2626'}">${v.inhouseShare}%</strong>
+        </div>
+        <div class="visit-row">
+          <span class="visit-row-label">POS / promo</span>
+          <span class="visit-row-value">${v.posAanwezig?'✓ Aanwezig':'✗ Ontbreekt'}</span>
+        </div>
+        ${v.feedbackKennis?`<div class="feedback-box">"${v.feedbackKennis}"</div>`:''}
+        <div class="photo-strip">
+          <div class="photo-thumb" onclick="showPhotoModal('${v.winkel}','Sony schap')">
+            <svg width="18" height="18" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+            <span class="photo-thumb-label">Sony schap</span>
+          </div>
+          <div class="photo-thumb" onclick="showPhotoModal('${v.winkel}','Concurrentie POS')">
+            <svg width="18" height="18" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+            <span class="photo-thumb-label">Concurrent POS</span>
+          </div>
+        </div>
+        ${v.overigeInfo?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0"><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:500">OVERIGE INFO</div><div style="font-size:12px;color:#555">${v.overigeInfo}</div></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── TABLE ───────────────────────────────────────────────────
+function renderTable(data) {
+  const rows=data.map(v=>{
+    const k=kennisLabel(v.kennisNiveau);
+    const s=schapLabel(v.schapStatus);
+    return `<tr>
+      <td><strong>${v.winkel}</strong></td>
+      <td><span class="rsa-pill ${v.rsa==='Jurre'?'rsa-jurre':'rsa-marthe'}">${v.rsa}</span></td>
+      <td>${v.keten}</td>
+      <td><span class="badge ${k.cls}" style="padding:2px 8px;font-size:11px">${v.kennisNiveau}/5 ${k.text}</span></td>
+      <td><span class="schap-dot ${s.cls}">${s.text}</span></td>
+      <td>${v.posAanwezig?'✓':'✗'}</td>
+      <td><span style="color:${v.inhouseShare>=40?'#16a34a':v.inhouseShare>=30?'#a16207':'#dc2626'};font-weight:500">${v.inhouseShare}%</span></td>
+      <td style="color:#999">${formatDate(v.datum)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('summaryBody').innerHTML=rows||'<tr><td colspan="8" style="color:#999;text-align:center;padding:20px">Geen data</td></tr>';
+}
+
+// ─── INTEL CARDS ─────────────────────────────────────────────
+function renderIntel(data) {
+  const cards=[];
+
+  const ci=data.filter(v=>v.concurrentieInzichten);
+  if (ci.length) cards.push(`
+    <div class="intel-card">
+      <div class="intel-card-title"><span class="intel-icon">🔍</span>Concurrentie inzichten</div>
+      <ul class="intel-items">${ci.map(v=>`<li><span class="intel-dot"></span><span><strong>${v.winkel}:</strong> ${v.concurrentieInzichten}</span></li>`).join('')}</ul>
+    </div>`);
+
+  const urg=data.filter(v=>v.kennisNiveau<=2);
+  if (urg.length) cards.push(`
+    <div class="intel-card" style="border-left:3px solid #ef4444">
+      <div class="intel-card-title"><span class="intel-icon">⚠️</span>Urgente trainingsbehoeften</div>
+      <ul class="intel-items">${urg.map(v=>`<li><span class="intel-dot" style="background:#ef4444"></span><span><strong>${v.winkel}</strong> — niveau ${v.kennisNiveau}/5<br><em style="color:#888">${v.feedbackKennis}</em></span></li>`).join('')}</ul>
+    </div>`);
+
+  const si=data.filter(v=>v.schapStatus!=='genba');
+  if (si.length) cards.push(`
+    <div class="intel-card" style="border-left:3px solid #f59e0b">
+      <div class="intel-card-title"><span class="intel-icon">🏪</span>Schap actiepunten</div>
+      <ul class="intel-items">${si.map(v=>{const s=schapLabel(v.schapStatus);return`<li><span class="intel-dot" style="background:${s.color}"></span><span><strong>${v.winkel}</strong> — <span class="${s.cls}">${s.text}</span></span></li>`;}).join('')}</ul>
+    </div>`);
+
+  const ov=data.filter(v=>v.overigeInfo);
+  if (ov.length) cards.push(`
+    <div class="intel-card">
+      <div class="intel-card-title"><span class="intel-icon">📋</span>Actiepunten & kansen</div>
+      <ul class="intel-items">${ov.map(v=>`<li><span class="intel-dot"></span><span><strong>${v.winkel}:</strong> ${v.overigeInfo}</span></li>`).join('')}</ul>
+    </div>`);
+
+  document.getElementById('intelGrid').innerHTML=cards.join('')||'<p style="color:#999;font-size:13px">Geen inzichten voor deze selectie.</p>';
+}
+
+// ─── MODAL ───────────────────────────────────────────────────
+function showPhotoModal(winkel,type) {
+  document.getElementById('modalBody').innerHTML=`
+    <div class="modal-title">Foto: ${type} — ${winkel}</div>
+    <div style="background:#f5f5f5;border-radius:8px;height:220px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:13px;flex-direction:column;gap:8px;border:1px dashed #ddd">
+      <svg width="32" height="32" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      Foto wordt geladen via Google Forms bijlage
+    </div>
+    <p style="font-size:11px;color:#aaa;margin-top:10px">Koppel Google Drive om foto's direct te tonen.</p>`;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function closeModal(e) {
+  if (e.target===document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('active');
+}
+
+// ─── RENDER ALL ──────────────────────────────────────────────
+function renderAll() {
+  const data=getFiltered();
+  renderKPIs(data);
+  renderVisitCards(data);
+  renderTable(data);
+  renderIntel(data);
+}
+
+function lastMonday() {
+  const d=new Date();
+  const diff=d.getDay()===0?6:d.getDay()-1;
+  d.setDate(d.getDate()-diff);
+  return d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
+}
+document.getElementById('updateDate').textContent=lastMonday();
+loadFromSheets();
+</script>
+</body>
+</html>
